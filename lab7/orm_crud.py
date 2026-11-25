@@ -6,26 +6,37 @@
 from lab7.models import Student, SessionLocal, init_db, DB_PATH
 
 
-def create_student(name: str, group_name: str, score: float) -> Student:
+def _to_dict(student: Student) -> dict:
+    return {
+        "id": student.id,
+        "name": student.name,
+        "group_name": student.group_name,
+        "score": student.score,
+    }
+
+
+def create_student(name: str, group_name: str, score: float) -> dict:
     with SessionLocal() as session:
         student = Student(name=name, group_name=group_name, score=score)
         session.add(student)
         session.commit()
         session.refresh(student)
-        return student
+        return _to_dict(student)
 
 
-def get_all() -> list[Student]:
+def get_all() -> list[dict]:
     with SessionLocal() as session:
-        return session.query(Student).order_by(Student.id).all()
+        students = session.query(Student).order_by(Student.id).all()
+        return [_to_dict(s) for s in students]
 
 
-def get_by_id(student_id: int) -> Student | None:
+def get_by_id(student_id: int) -> dict | None:
     with SessionLocal() as session:
-        return session.get(Student, student_id)
+        student = session.get(Student, student_id)
+        return _to_dict(student) if student else None
 
 
-def update_score(student_id: int, score: float) -> Student | None:
+def update_score(student_id: int, score: float) -> dict | None:
     with SessionLocal() as session:
         student = session.get(Student, student_id)
         if not student:
@@ -33,7 +44,7 @@ def update_score(student_id: int, score: float) -> Student | None:
         student.score = score
         session.commit()
         session.refresh(student)
-        return student
+        return _to_dict(student)
 
 
 def delete_student(student_id: int) -> bool:
@@ -47,6 +58,8 @@ def delete_student(student_id: int) -> bool:
 
 
 def main() -> None:
+    # Для демонстрации база пересоздаётся при каждом запуске.
+    # Веб-интерфейс использует ту же students_orm.db — после demo данные будут сброшены.
     if DB_PATH.exists():
         DB_PATH.unlink()
     init_db()
@@ -58,7 +71,7 @@ def main() -> None:
 
     print("[READ]")
     for s in get_all():
-        print(f"  {s.id}: {s.name} | {s.group_name} | {s.score}")
+        print(f"  {s['id']}: {s['name']} | {s['group_name']} | {s['score']}")
 
     print("[UPDATE] id=2 → score=5.0")
     update_score(2, 5.0)
@@ -68,7 +81,7 @@ def main() -> None:
 
     print("[READ после изменений]")
     for s in get_all():
-        print(f"  {s.id}: {s.name} | {s.group_name} | {s.score}")
+        print(f"  {s['id']}: {s['name']} | {s['group_name']} | {s['score']}")
 
     print(f"\nБаза: {DB_PATH}")
 
