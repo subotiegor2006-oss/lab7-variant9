@@ -23,25 +23,17 @@ pip install -r requirements.txt
 
 ## Запуск
 
-### sqlite3 (средние задания)
-
 ```bash
+# sqlite3: таблица, параметры, DELETE
 python -m lab7.sqlite_demo
-```
 
-### ORM CRUD
-
-```bash
+# SQLAlchemy ORM CRUD
 python -m lab7.orm_crud
-```
 
-### Веб-интерфейс
-
-```bash
+# Веб-интерфейс
 python -m lab7.web_app
+# http://127.0.0.1:5000/
 ```
-
-Откройте http://127.0.0.1:5000/
 
 ## Структура
 
@@ -53,3 +45,13 @@ lab7/
 ├── orm_crud.py       # №2↑ — CRUD через ORM
 └── web_app.py        # №9↑ — Flask UI к БД
 ```
+
+## Кратко по заданиям
+
+| № | Что сделано |
+|---|-------------|
+| 1 | `CREATE TABLE students` |
+| 6 | `DELETE FROM students WHERE id = ?` |
+| 9 | `executemany(..., (?, ?, ?))` |
+| 2↑ | create / read / update / delete через ORM |
+| 9↑ | Flask: список, добавление, удаление |
