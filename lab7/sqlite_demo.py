@@ -1,12 +1,15 @@
-"""sqlite3: создание таблицы, параметры (?), DELETE.
+"""sqlite3: создание таблицы, параметры (?), DELETE, экспорт CSV.
 
 Задания средней сложности №1, №6, №9.
 """
 
+import csv
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "students_sqlite.db"
+CSV_PATH = Path(__file__).parent.parent / "students_export.csv"
 
 
 def connect() -> sqlite3.Connection:
@@ -20,10 +23,10 @@ def create_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS students (
-            id    INTEGER PRIMARY KEY AUTOINCREMENT,
-            name  TEXT    NOT NULL,
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
             group_name TEXT NOT NULL,
-            score REAL    DEFAULT 0.0
+            score      REAL DEFAULT 0.0
         )
         """
     )
@@ -62,20 +65,44 @@ def delete_student(conn: sqlite3.Connection, student_id: int) -> None:
     print(f"[№6] Удалено строк: {cur.rowcount} (id={student_id})")
 
 
+def export_to_csv(conn: sqlite3.Connection, path: Path) -> int:
+    """Экспорт таблицы students в CSV.
+
+    Использует csv.DictWriter, newline='' и encoding='utf-8'.
+    """
+    rows = conn.execute(
+        "SELECT id, name, group_name, score FROM students ORDER BY id"
+    ).fetchall()
+    fieldnames = ["id", "name", "group_name", "score"]
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key: row[key] for key in fieldnames})
+
+    print(f"[CSV] Экспортировано {len(rows)} строк → {path}")
+    return len(rows)
+
+
 def main() -> None:
+    # Для демонстрации база пересоздаётся при каждом запуске.
+    # Данные, добавленные через веб-интерфейс (students_orm.db), не затрагиваются.
     if DB_PATH.exists():
         DB_PATH.unlink()
 
-    with connect() as conn:
+    with closing(connect()) as conn:
         create_table(conn)
         insert_students(conn)
         show_all(conn)
 
-        # удаляем студента с id=3
         delete_student(conn, 3)
         show_all(conn)
 
+        export_to_csv(conn, CSV_PATH)
+
     print(f"\nБаза: {DB_PATH}")
+    print(f"CSV:  {CSV_PATH}")
 
 
 if __name__ == "__main__":
