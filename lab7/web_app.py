@@ -3,7 +3,10 @@
 Задание повышенной сложности №9.
 """
 
-from flask import Flask, redirect, render_template_string, request, url_for
+import csv
+import io
+
+from flask import Flask, Response, redirect, render_template_string, request, url_for
 
 from lab7.models import Student, SessionLocal, init_db
 
@@ -23,10 +26,11 @@ PAGE = """
     th { background: #2980b9; color: #fff; }
     tr:nth-child(even) { background: #f5f7fa; }
     form { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    input, button { padding: 6px 10px; font-size: 14px; }
-    button { cursor: pointer; }
+    input, button, a.btn { padding: 6px 10px; font-size: 14px; }
+    button, a.btn { cursor: pointer; text-decoration: none; display: inline-block; }
     .del { background: #e74c3c; color: #fff; border: none; border-radius: 3px; }
     .add { background: #27ae60; color: #fff; border: none; border-radius: 3px; }
+    .csv { background: #8e44ad; color: #fff; border-radius: 3px; }
   </style>
 </head>
 <body>
@@ -38,6 +42,7 @@ PAGE = """
     <input name="group_name" placeholder="Группа" required>
     <input name="score" type="number" step="0.1" min="0" max="5" value="4.0" required>
     <button class="add" type="submit">Добавить</button>
+    <a class="btn csv" href="{{ url_for('export_csv') }}">Экспорт CSV</a>
   </form>
 
   <table>
@@ -71,7 +76,12 @@ PAGE = """
 def index():
     with SessionLocal() as session:
         students = session.query(Student).order_by(Student.id).all()
-    return render_template_string(PAGE, students=students)
+        # копируем в простые объекты, пока сессия открыта
+        data = [
+            {"id": s.id, "name": s.name, "group_name": s.group_name, "score": s.score}
+            for s in students
+        ]
+    return render_template_string(PAGE, students=data)
 
 
 @app.route("/add", methods=["POST"])
@@ -95,10 +105,34 @@ def delete(student_id: int):
     return redirect(url_for("index"))
 
 
+@app.route("/export")
+def export_csv():
+    """Скачать таблицу students в CSV."""
+    with SessionLocal() as session:
+        students = session.query(Student).order_by(Student.id).all()
+        rows = [
+            {"id": s.id, "name": s.name, "group_name": s.group_name, "score": s.score}
+            for s in students
+        ]
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["id", "name", "group_name", "score"])
+    writer.writeheader()
+    writer.writerows(rows)
+
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=students.csv"},
+    )
+
+
 def main() -> None:
     init_db()
     print("Веб-интерфейс: http://127.0.0.1:5000/")
-    app.run(debug=True)
+    print("Экспорт CSV:   http://127.0.0.1:5000/export")
+    # debug=False — безопасный режим; для отладки передайте debug=True вручную
+    app.run(debug=False)
 
 
 if __name__ == "__main__":
